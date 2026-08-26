@@ -10,6 +10,7 @@
 </div>
 
 <p align="center">
+  <a href="https://pub-d90b81cad7254a1aa6b148ac18153c0c.r2.dev/isaac-0.5.pdf"><strong>Paper</strong></a> ·
   <a href="https://huggingface.co/PerceptronAI/Isaac-0.5"><strong>Model &amp; weights</strong></a> ·
   <a href="https://www.perceptron.inc/" target="_blank"><strong>Website</strong></a> ·
   <a href="https://discord.gg/fgBeaACQzE" target="_blank"><strong>Community</strong></a>
