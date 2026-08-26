@@ -1,0 +1,3 @@
+[submodule "lerobot"]
+	path = lerobot
+	url = https://github.com/perceptron-ai-inc/lerobot.git
