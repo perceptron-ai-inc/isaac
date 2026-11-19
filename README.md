@@ -28,53 +28,42 @@ We also measured how general video changes the amount of robot data needed durin
 
 ## Using this repository
 
-The Isaac training and inference code lives in a pinned LeRobot submodule:
-
-```text
-isaac/
-├── lerobot/       # Isaac 0.5 training and inference integration
-├── LICENSE
-└── README.md
-```
-
-Clone the repository:
+On Linux, install Git, uv, and a Rust toolchain, and use a CUDA-capable NVIDIA GPU. Clone Isaac with its pinned LeRobot submodule. The policy type is `perceptron_isaac`.
 
 ```bash
 git clone --recurse-submodules https://github.com/perceptron-ai-inc/isaac.git
 cd isaac/lerobot
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -c constraints/perceptron_isaac-cu128.txt \
+  --index https://download.pytorch.org/whl/cu128 --index-strategy unsafe-best-match \
+  '.[perceptron_isaac,training]'
 ```
 
-## Installation
+The constraints select the CUDA 12.8 build of PyTorch and the `perceptron_isaac` extra installs the pinned mHarmony runtime. For LIBERO evaluation, install `.[perceptron_isaac,training,libero]` in the same command.
 
-In LeRobot, the policy type is named `perceptron_isaac`. From the `lerobot` directory:
+Find checkpoints and inference examples in the model cards. [Isaac 0.5 on Hugging Face](https://huggingface.co/PerceptronAI/Isaac-0.5)
+
+## Fine-tune
+
+From `isaac/lerobot`, set `POLICY_DIR` to the `recorded_policy` directory in the downloaded YAM or SO-100/101 checkpoint and `DATASET_REPO_ID` to a compatible LeRobot dataset. This example uses two GPUs and CPU offload. It saves a checkpoint at the end of training.
 
 ```bash
-uv sync --locked --extra perceptron_isaac
-uv run python -c "from lerobot.policies.perceptron_isaac import PerceptronIsaacPolicy"
+STEPS=10000
+torchrun --standalone --nproc_per_node=2 ../scripts/finetune.py \
+  --policy.path="$POLICY_DIR" --dataset.repo_id="$DATASET_REPO_ID" \
+  --steps="$STEPS" --policy.max_train_steps="$STEPS" --batch_size=1 \
+  --dataset.video_backend=pyav --parallelism.dp_shard=-1 \
+  --accelerator.mixed_precision=bf16 --accelerator.fsdp.cpu_offload=true \
+  --accelerator.fsdp.reduce_dtype=float32 --policy.push_to_hub=false \
+  --env_eval_freq=0 --eval_steps=0
 ```
 
-For the CUDA runtime:
-
-```bash
-uv sync --locked --extra perceptron_isaac_cuda
-```
-
-For fine-tuning:
-
-```bash
-uv sync --locked --extra perceptron_isaac --extra training --extra peft
-uv run lerobot-train --help
-```
-
-mHarmony and TensorStream are maintained separately from this repository. The `perceptron_isaac` extra does not yet declare the mHarmony runtime, so a clean checkout is not enough for rendering, training, or inference. The provenance and policy guides document this boundary and the current deployment requirements.
-
-Model resources are hosted at [PerceptronAI/Isaac-0.5](https://huggingface.co/PerceptronAI/Isaac-0.5).
+For a one-step smoke test, set `STEPS=1` and add `--policy.optimizer_warmup_steps=0`. If your dataset uses different camera keys, pass a mapping from dataset keys to policy keys with `--rename_map`.
 
 ## Documentation
 
-- [Fine-tuning guide](./lerobot/docs/PERCEPTRON_ISAAC_FINETUNING_GUIDE.md)
 - [Policy and runtime guide](./lerobot/src/lerobot/policies/perceptron_isaac/README.md)
-- [Source provenance and package boundaries](./lerobot/docs/PERCEPTRON_ISAAC_PROVENANCE.md)
 - [LeRobot user guide](./lerobot/AGENT_GUIDE.md)
 
 ## License
